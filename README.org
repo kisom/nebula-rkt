@@ -1,0 +1,53 @@
+#+TITLE: Nebula: a remote filesystem idea
+
+* Introduction
+
+  I need a project to play around with the practicals of Racket. To
+  me, practical uses are why I choose a given programming language
+  mostly, and in this case, what I want to do intersects my systems
+  and networking background. This idea is inspired by a talk from Joe
+  Armstrong, from some previous ideas I've hacked on, and from talking
+  on the tyrfingr IRC channel.
+
+  The basic idea is a file storage system, available via a network
+  connection. Files are identified by a SHA256 hash, preferably with
+  some metadata associated (such as creation time). A file is
+  immutable; once entered, it doesn't change.
+
+* Basic idea
+
+  The user can upload a stream of bytes (the file); the server will
+  perform a SHA256 hash of the file and return this to the user. The
+  file will be stored on disk in a file/<first two bytes of
+  hash>/<rest of hash> directory.
+
+  For example, the file containing
+ 
+#+BEGIN_EXAMPLE
+Hello, world.
+
+#+END_EXAMPLE
+
+  would be stored in
+
+#+BEGIN_EXAMPLE
+files/23eb/efdbe49a24e4bb9e243f649b3606c9241871a02d6122831d3cb7b2d6760~
+#+END_EXAMPLE
+
+  Some metadata might be entered in
+
+#+BEGIN_EXAMPLE
+meta/23eb/7efdbe49a24e4bb9e243f649b3606c9241871a02d6122831d3cb7b2d6760
+#+END_EXAMPLE
+
+* API
+
+  This could be accomplished via either a TCP interface (using binary
+  commands) or a REST API.
+
+* Extending
+
+  + ACL
+  + Encryption
+  + File lineage (i.e. what's the parent's hash, allows pruning the tree)
+  + Is there a way to work garbage collection into this?
