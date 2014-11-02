@@ -3,6 +3,7 @@
 (require (planet mordae/sha2))
 
 (define nebula-root "/tmp/nebula")
+(define nebula-file-root (string-join (list nebula-root "files") "/"))
 
 (define (sha256-digest input) 
   (cond 
@@ -14,7 +15,7 @@
 
 (define (file-parent digest)
   (string-join (list
-                nebula-root
+                nebula-file-root
                 (substring digest 0 4))
                "/"))
 
@@ -29,7 +30,7 @@
 
 (define (file-path digest)
   (string-join (list
-                nebula-root
+                nebula-file-root
                 (substring digest 0 4)
                 (substring digest 4))
                "/"))
@@ -41,9 +42,39 @@
       (error "Couldn't write to file."))
     digest))
 
+(define (retrieve-file in-port)
+  (let* ([digest (string-trim (port->string in-port))]
+         [path (file-path digest)])
+    (if (file-exists? path)
+      (file->bytes path)
+      (printf "File ~s does not exist.\n" path))))
+
+(define (connection-handler in out)
+  (printf "New connection!\n")
+  (let ([op (read-char in)])
+    (display op) (newline)
+    (cond 
+     [(eqv? op #\S) (display (store-file in) out)]
+     [(eqv? op #\L) (display (retrieve-file in) out)]
+     [else (printf "unknown operation ~s\n" op)])))
+
+(define (network-handler listener)
+  (define cust (make-custodian))
+  (parameterize ([current-custodian cust])
+    (define-values (in out) (tcp-accept listener))
+    (thread
+     (lambda ()
+       (connection-handler in out)
+       (printf "closing connection!\n")
+       (close-input-port in)
+       (close-output-port out)))
+    (network-handler listener)))
+
 (define (network-listener portno)
   (let ([listener (tcp-listen portno)])
-    (let-values ([(in out) (tcp-accept listener)])
-      (write (store-file in) out)
-      (close-input-port in)
-      (close-output-port out))))
+    (define t (thread
+               (lambda ()
+                 (network-handler listener))))
+    (lambda ()
+      (kill-thread t)
+      (tcp-close listener))))
